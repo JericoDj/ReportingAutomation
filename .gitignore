@@ -48,3 +48,6 @@ app.*.map.json
 # Node.js
 node_modules/
 **/node_modules/
+
+# Firebase
+lib/firebase_options.dart
