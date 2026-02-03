@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "617343842163",
+    "project_id": "reportingautomation-47bd8",
+    "storage_bucket": "reportingautomation-47bd8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:617343842163:android:43f66fa5842ba7a084f706",
+        "android_client_info": {
+          "package_name": "com.leos.ReportAutomation.reportautomation"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkuYxjtqYJ-_FBmxDg7tXmBZnBBLntsPA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
