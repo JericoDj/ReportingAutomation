@@ -4,6 +4,8 @@ import 'package:reportautomation/core/constants/api_constants.dart';
 import 'package:reportautomation/features/report_generator/models/conversation_analysis_model.dart';
 import 'package:reportautomation/features/report_generator/models/report_json_model.dart';
 
+import 'package:flutter/foundation.dart';
+
 class OpenAIService {
   final String _apiKey = ApiConstants.openAiApiKey;
   final String _baseUrl = ApiConstants.openAiUrl;
@@ -13,19 +15,19 @@ class OpenAIService {
   Future<ConversationAnalysisModel> analyzeConversation(
     String transcript,
   ) async {
+    debugPrint('Analyzing transcript of length: ${transcript.length}');
     final prompt =
         '''
-    Analyze the following real estate conversation transcript.
-    Determine the type (proposal, cost_analysis, marketing, advancement, or general).
-    Extract key keywords.
-    Determine if we should proceed with a report (status: proceed) or if it's too vague (status: review).
+    Analyze the following conversation transcript.
+    1. Identify the primary domain (e.g., Real Estate, Software Engineering, AI Research, Legal, Business, etc.).
+    2. Determine the specific conversation type (e.g., proposal, code_review, strategy_meeting, interview, cost_analysis).
     
     Return strict JSON ONLY matching this schema:
     {
-      "type": "proposal",
+      "type": "software_architecture_review",
       "confidence": 0.95,
       "status": "proceed",
-      "keywords": ["price", "marketing", "timeline"]
+      "keywords": ["scalability", "database", "microservices"]
     }
 
     Transcript:
@@ -44,30 +46,39 @@ class OpenAIService {
   ) async {
     final prompt =
         '''
-    Generate a professional real estate report based on this transcript.
+    Generate a professional report based on this transcript.
     Context: The conversation was identified as: ${analysis.type}.
+
+    Please organize the response into 3 specific sections:
+    1. Overview: A detailed narrative summary of what was discussed (Paragraph 1).
+    2. Key Details: specific facts, numbers, technical specs, dates, or requirements mentioned (Paragraph 2).
+    3. AI Suggestions: Strategic advice, next steps, or potential risks based on the analysis (Paragraph 3).
     
     Return strict JSON ONLY matching this schema (do not wrap in markdown ```json blocks):
     {
       "status": "for_generation",
-      "report_type": "real_estate_${analysis.type}",
-      "title": "Professional ${analysis.type.toUpperCase()} Report",
+      "report_type": "${analysis.type}",
+      "title": "Professional Report: ${analysis.type.replaceAll('_', ' ').toUpperCase()}",
       "generated_by": "AI Assistant",
       "date": "${DateTime.now().toIso8601String()}",
       "sections": [
         {
           "type": "paragraph",
-          "title": "Executive Summary",
+          "title": "Overview",
           "content": "..."
         },
         {
-          "type": "table",
-          "title": "Cost Breakdown",
-          "headers": ["Item", "Cost estimate"],
-          "rows": [["Paint", "\$500"], ["Staging", "\$2000"]]
+          "type": "paragraph",
+          "title": "Key Details",
+          "content": "..."
+        },
+        {
+          "type": "paragraph",
+          "title": "AI Suggestions",
+          "content": "..."
         }
       ],
-      "recommendations": ["Action item 1", "Action item 2"]
+      "recommendations": ["Action Item 1", "Action Item 2"]
     }
 
     Transcript:
@@ -97,7 +108,7 @@ class OpenAIService {
             {
               'role': 'system',
               'content':
-                  'You are a professional Data Analyst for Real Estate. Output strict JSON.',
+                  'You are a professional Business & Data Analyst. Output strict JSON.',
             },
             {'role': 'user', 'content': userPrompt},
           ],

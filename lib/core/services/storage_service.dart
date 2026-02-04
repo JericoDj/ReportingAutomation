@@ -43,14 +43,45 @@ class StorageService {
     }
   }
 
-  Future<String> uploadPdfFile(String fileName, String filePath) async {
+  Future<String> uploadPdfFile(
+    String fileName,
+    String filePath, {
+    Uint8List? bytes,
+  }) async {
     try {
       final ref = _storage.ref().child('generated_reports/$fileName');
-      final task = ref.putFile(File(filePath));
+
+      final metadata = SettableMetadata(
+        contentType: 'application/pdf',
+        contentDisposition: 'inline; filename="$fileName"',
+      );
+
+      UploadTask task;
+      if (bytes != null) {
+        task = ref.putData(bytes, metadata);
+      } else {
+        task = ref.putFile(File(filePath), metadata);
+      }
       final snapshot = await task;
       return await snapshot.ref.getDownloadURL();
     } catch (e) {
       throw Exception('PDF Upload Error: $e');
+    }
+  }
+
+  Future<void> updatePdfMetadata(String downloadUrl) async {
+    try {
+      final ref = _storage.refFromURL(downloadUrl);
+      await ref.updateMetadata(
+        SettableMetadata(
+          contentType: 'application/pdf',
+          contentDisposition: 'inline',
+        ),
+      );
+    } catch (e) {
+      // Ignore errors if metadata update fails (e.g. permission or not found)
+      // This is a best-effort fix for existing files.
+      print('Error updating PDF metadata: $e');
     }
   }
 }

@@ -31,6 +31,7 @@ class ReportProvider extends ChangeNotifier {
   ConversationAnalysisModel? _analysis;
   ReportJsonModel? _reportJson;
   PdfReportModel? _pdfReport;
+  String? _sessionId; // Current Session ID
 
   // Getters
   int get currentStepIndex => _currentStepIndex;
@@ -41,6 +42,7 @@ class ReportProvider extends ChangeNotifier {
   ConversationAnalysisModel? get analysis => _analysis;
   ReportJsonModel? get reportJson => _reportJson;
   PdfReportModel? get pdfReport => _pdfReport;
+  String? get sessionId => _sessionId;
 
   // STEP 0: Upload Audio (File Selection)
   Future<void> pickAudioFile() async {
@@ -87,38 +89,100 @@ class ReportProvider extends ChangeNotifier {
   // Orchestrator: Generate Report
   // This function drives the entire sequence or can be broken down if user wants step-by-step
   // For "User clicks Generate Report", we assume it runs the automated pipeline.
-  Future<void> startGenerationPipeline() async {
-    if (_audioFile == null) {
+
+  bool _isPaused = false;
+  bool _isStopping = false;
+
+  void pauseGeneration() {
+    _isPaused = true;
+    _setLoading(false);
+    notifyListeners();
+  }
+
+  void stopGeneration() {
+    _isStopping = true;
+    _setLoading(false);
+    _isPaused = false; // Reset pause if stopping
+    notifyListeners();
+  }
+
+  Future<void> continueGeneration() async {
+    if (_audioFile == null && _currentStepIndex == 0) {
       _setError("No audio file selected.");
       return;
     }
 
     _errorMessage = null;
+    _isPaused = false;
+    _isStopping = false;
 
     try {
-      // Step 1: Transcribe
-      await _transcribeAudio();
-      if (_transcription == null) throw Exception("Transcription failed.");
+      // Initialize Session if not already done
+      if (_sessionId == null) {
+        _sessionId = await _firebaseService.createSessionId();
+        await _firebaseService.createSession(_sessionId!, "user_123");
+        notifyListeners();
+      }
 
-      // Step 2: Analyze
-      await _analyzeConversation();
-      if (_analysis == null) throw Exception("Analysis failed.");
+      // Loop through steps based on current index
+      // Step 0 -> 1: Transcribe
+      if (_currentStepIndex < 1) {
+        if (_checkStopOrPause()) return;
+        await _transcribeAudio();
+        if (_transcription == null) throw Exception("Transcription failed.");
+      }
 
-      // Step 3: Generate JSON
-      await _generateReportJson();
-      if (_reportJson == null) throw Exception("Report generation failed.");
+      // Step 1 -> 2: Analyze
+      if (_currentStepIndex < 2) {
+        if (_checkStopOrPause()) return;
+        await _analyzeConversation();
+        if (_analysis == null) throw Exception("Analysis failed.");
+      }
 
-      // Step 4: Generate PDF
-      await _generatePdf();
+      // Step 2 -> 3: Generate JSON
+      if (_currentStepIndex < 3) {
+        if (_checkStopOrPause()) return;
+        await _generateReportJson();
+        if (_reportJson == null) throw Exception("Report generation failed.");
+      }
+
+      // Step 3 -> 4: Generate PDF
+      if (_currentStepIndex < 4) {
+        if (_checkStopOrPause()) return;
+        await _generatePdf();
+      }
     } catch (e) {
       _setError(e.toString());
+    } finally {
+      // Ensure loading is off if we finish or error out, unless we paused (already handled)
+      if (!_isPaused) {
+        _setLoading(false);
+      }
     }
+  }
+
+  bool _checkStopOrPause() {
+    if (_isStopping) {
+      _setLoading(false);
+      return true;
+    }
+    if (_isPaused) {
+      _setLoading(false);
+      return true;
+    }
+    return false;
   }
 
   // Step 1
   Future<void> _transcribeAudio() async {
     _setStep(1);
     _setLoading(true);
+    await _firebaseService.logProcessStep(
+      "user_123",
+      _sessionId,
+      "Transcription",
+      "Started",
+    );
     try {
       // 1. Upload to Storage (Skip if remote)
       String downloadUrl;
@@ -135,12 +199,28 @@ class ReportProvider extends ChangeNotifier {
       // 2. Transcribe
       _transcription = await _deepgramService.transcribeAudio(downloadUrl);
 
-      // 3. Save to Firestore (Mock user ID for now)
-      await _firebaseService.saveTranscription(
+      // 3. Persist Session State
+      if (_sessionId != null) {
+        await _firebaseService.updateSessionState(_sessionId!, {
+          'transcription': _transcription!.toJson(),
+          'audioUrl': downloadUrl,
+        });
+      }
+
+      await _firebaseService.logProcessStep(
         "user_123",
-        _transcription!.transcription,
+        _sessionId,
+        "Transcription",
+        "Completed",
       );
     } catch (e) {
+      await _firebaseService.logProcessStep(
+        "user_123",
+        _sessionId,
+        "Transcription",
+        "Error",
+        details: e.toString(),
+      );
       rethrow;
     } finally {
       _setLoading(false);
@@ -151,11 +231,38 @@ class ReportProvider extends ChangeNotifier {
   Future<void> _analyzeConversation() async {
     _setStep(2);
     _setLoading(true);
+    await _firebaseService.logProcessStep(
+      "user_123",
+      _sessionId,
+      "Analysis",
+      "Started",
+    );
     try {
       _analysis = await _openAiService.analyzeConversation(
         _transcription!.transcription,
       );
+
+      // Persist State
+      if (_sessionId != null) {
+        await _firebaseService.updateSessionState(_sessionId!, {
+          'analysis': _analysis!.toJson(),
+        });
+      }
+
+      await _firebaseService.logProcessStep(
+        "user_123",
+        _sessionId,
+        "Analysis",
+        "Completed",
+      );
     } catch (e) {
+      await _firebaseService.logProcessStep(
+        "user_123",
+        _sessionId,
+        "Analysis",
+        "Error",
+        details: e.toString(),
+      );
       rethrow;
     } finally {
       _setLoading(false);
@@ -166,14 +273,39 @@ class ReportProvider extends ChangeNotifier {
   Future<void> _generateReportJson() async {
     _setStep(3);
     _setLoading(true);
+    await _firebaseService.logProcessStep(
+      "user_123",
+      _sessionId,
+      "JSON Generation",
+      "Started",
+    );
     try {
       _reportJson = await _openAiService.generateReport(
         _transcription!.transcription,
         _analysis!,
       );
-      // Save Report JSON
-      await _firebaseService.saveReport("user_123", _reportJson!);
+
+      // Persist State
+      if (_sessionId != null) {
+        await _firebaseService.updateSessionState(_sessionId!, {
+          'reportJson': _reportJson!.toJson(),
+        });
+      }
+
+      await _firebaseService.logProcessStep(
+        "user_123",
+        _sessionId,
+        "JSON Generation",
+        "Completed",
+      );
     } catch (e) {
+      await _firebaseService.logProcessStep(
+        "user_123",
+        _sessionId,
+        "JSON Generation",
+        "Error",
+        details: e.toString(),
+      );
       rethrow;
     } finally {
       _setLoading(false);
@@ -184,21 +316,53 @@ class ReportProvider extends ChangeNotifier {
   Future<void> _generatePdf() async {
     _setStep(4);
     _setLoading(true);
+    await _firebaseService.logProcessStep(
+      "user_123",
+      _sessionId,
+      "PDF Generation",
+      "Started",
+    );
     try {
-      final file = await _pdfService.generateReportPdf(_reportJson!);
+      final result = await _pdfService.generateReportPdf(_reportJson!);
 
-      // Upload PDF to Storage
-      final downloadUrl = await _storageService.uploadPdfFile(
-        "report_${DateTime.now()}.pdf",
-        file.path,
+      // Upload PDF to Storage (optional for web since it handles download, but good for persistence)
+      String downloadUrl = result.path;
+      // Always upload to ensure persistence for history/web refresh
+      downloadUrl = await _storageService.uploadPdfFile(
+        "report_${DateTime.now().millisecondsSinceEpoch}.pdf",
+        result.path,
+        bytes: result.bytes, // Pass bytes if available (crucial for Web)
       );
 
       _pdfReport = PdfReportModel(
-        filePath: file.path,
+        filePath: result.path,
         downloadUrl: downloadUrl,
         isSigned: false,
+        pdfBytes: result.bytes,
+      );
+
+      // Persist State
+      if (_sessionId != null) {
+        await _firebaseService.updateSessionState(_sessionId!, {
+          'pdfReport': _pdfReport!.toJson(),
+          'status': 'pdf_ready', // Explicit status
+        });
+      }
+
+      await _firebaseService.logProcessStep(
+        "user_123",
+        _sessionId,
+        "PDF Generation",
+        "Completed",
       );
     } catch (e) {
+      await _firebaseService.logProcessStep(
+        "user_123",
+        _sessionId,
+        "PDF Generation",
+        "Error",
+        details: e.toString(),
+      );
       rethrow;
     } finally {
       _setLoading(false);
@@ -212,29 +376,49 @@ class ReportProvider extends ChangeNotifier {
     _setStep(5);
     _setLoading(true);
     try {
-      // "Overlay signature" logic via PDF Service
-      // For now we assume we are using the 'signature' from storage or just marking it
-      // Let's assume we re-generate with signature for simplicity in this demo scope
-      final signedFile = await _pdfService.generateReportPdfWithSignature(
+      final result = await _pdfService.generateReportPdfWithSignature(
         _reportJson!,
         "signature_path_placeholder",
       );
 
-      final downloadUrl = await _storageService.uploadPdfFile(
-        "report_signed_${DateTime.now()}.pdf",
-        signedFile.path,
+      String downloadUrl = result.path;
+      // Always upload signed report
+      downloadUrl = await _storageService.uploadPdfFile(
+        "report_signed_${DateTime.now().millisecondsSinceEpoch}.pdf",
+        result.path,
+        bytes: result.bytes,
       );
 
       _pdfReport = PdfReportModel(
-        filePath: signedFile.path,
+        filePath: result.path,
         downloadUrl: downloadUrl,
         isSigned: true,
+        pdfBytes: result.bytes,
       );
 
-      // Mark as complete/Success
-      _setStep(6); // 6 = Done? Or just stay at 5 (Signed)
+      // Update Session
+      if (_sessionId != null) {
+        await _firebaseService.updateSessionState(_sessionId!, {
+          'pdfReport': _pdfReport!.toJson(),
+          'status': 'completed',
+        });
+      }
+
+      await _firebaseService.logProcessStep(
+        "user_123",
+        _sessionId,
+        "Signing",
+        "Completed",
+      );
     } catch (e) {
-      _setError("Signing failed: $e");
+      await _firebaseService.logProcessStep(
+        "user_123",
+        _sessionId,
+        "Signing",
+        "Error",
+        details: e.toString(),
+      );
+      rethrow;
     } finally {
       _setLoading(false);
     }
@@ -253,5 +437,53 @@ class ReportProvider extends ChangeNotifier {
   void _setError(String message) {
     _errorMessage = message;
     notifyListeners();
+  }
+
+  // --- Session: Load / Resume ---
+  Future<void> loadSession(Map<String, dynamic> sessionData) async {
+    _setLoading(true);
+    try {
+      _sessionId = sessionData['sessionId'];
+
+      // Restore Transcription
+      if (sessionData['transcription'] != null) {
+        _transcription = TranscriptionModel.fromJson(
+          sessionData['transcription'],
+        );
+        _currentStepIndex = 1; // At least transcribed
+      }
+
+      // Restore Analysis
+      if (sessionData['analysis'] != null) {
+        _analysis = ConversationAnalysisModel.fromJson(sessionData['analysis']);
+        _currentStepIndex = 2; // At least analyzed
+      }
+
+      // Restore JSON
+      if (sessionData['reportJson'] != null) {
+        _reportJson = ReportJsonModel.fromJson(sessionData['reportJson']);
+        _currentStepIndex = 3; // At least JSON generated
+      }
+
+      // Restore PDF
+      if (sessionData['pdfReport'] != null) {
+        _pdfReport = PdfReportModel.fromJson(sessionData['pdfReport']);
+        _currentStepIndex = 4;
+        if (_pdfReport!.isSigned) {
+          _currentStepIndex = 5;
+        }
+
+        // Fix metadata for existing reports to ensure inline viewing
+        if (_pdfReport!.downloadUrl != null) {
+          _storageService.updatePdfMetadata(_pdfReport!.downloadUrl!);
+        }
+      }
+
+      notifyListeners();
+    } catch (e) {
+      _setError("Failed to load session: $e");
+    } finally {
+      _setLoading(false);
+    }
   }
 }
