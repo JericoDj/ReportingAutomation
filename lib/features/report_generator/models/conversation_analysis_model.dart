@@ -3,12 +3,14 @@ class ConversationAnalysisModel {
   final double confidence;
   final String status;
   final List<String> keywords;
+  final String? recommendedReportType;
 
   ConversationAnalysisModel({
     required this.type,
     required this.confidence,
     required this.status,
     this.keywords = const [],
+    this.recommendedReportType,
   });
 
   factory ConversationAnalysisModel.fromJson(Map<String, dynamic> json) {
@@ -21,6 +23,7 @@ class ConversationAnalysisModel {
               ?.map((e) => e as String)
               .toList() ??
           [],
+      recommendedReportType: json['recommended_report_type'] as String?,
     );
   }
 
@@ -30,6 +33,7 @@ class ConversationAnalysisModel {
       'confidence': confidence,
       'status': status,
       'keywords': keywords,
+      'recommended_report_type': recommendedReportType,
     };
   }
 }

@@ -57,6 +57,7 @@ class ReportSection {
   final List<String>? headers;
   final List<List<String>>? rows;
   final List<String>? items;
+  final Map<String, dynamic>? chartData;
 
   ReportSection({
     required this.type,
@@ -65,6 +66,7 @@ class ReportSection {
     this.headers,
     this.rows,
     this.items,
+    this.chartData,
   });
 
   factory ReportSection.fromJson(Map<String, dynamic> json) {
@@ -75,12 +77,21 @@ class ReportSection {
       headers: (json['headers'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
-      rows: (json['rows'] as List<dynamic>?)
-          ?.map((e) => (e as List<dynamic>).map((i) => i as String).toList())
-          .toList(),
+      rows: (json['rows'] as List<dynamic>?)?.map((e) {
+        // Handle raw list (AI output)
+        if (e is List) {
+          return e.map((i) => i.toString()).toList();
+        }
+        // Handle wrapped map (Firestore storage)
+        if (e is Map && e.containsKey('d')) {
+          return (e['d'] as List<dynamic>).map((i) => i.toString()).toList();
+        }
+        return <String>[];
+      }).toList(),
       items: (json['items'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
+      chartData: json['chart_data'] as Map<String, dynamic>?,
     );
   }
 
@@ -90,8 +101,10 @@ class ReportSection {
       'title': title,
       'content': content,
       'headers': headers,
-      'rows': rows,
+      // Wrap nested list in a Map for Firestore compatibility
+      'rows': rows?.map((r) => {'d': r}).toList(),
       'items': items,
+      'chart_data': chartData,
     };
   }
 }

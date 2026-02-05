@@ -91,6 +91,10 @@ class PdfService {
               );
             }
 
+            if (section.type == 'chart' && section.chartData != null) {
+              return _buildChart(section);
+            }
+
             return pw.SizedBox();
           }),
           if (report.recommendations.isNotEmpty) ...[
@@ -164,6 +168,10 @@ class PdfService {
               );
             }
 
+            if (section.type == 'chart' && section.chartData != null) {
+              return _buildChart(section);
+            }
+
             return pw.SizedBox();
           }),
           if (report.recommendations.isNotEmpty) ...[
@@ -222,5 +230,64 @@ class PdfService {
         'report_signed_${DateTime.now().millisecondsSinceEpoch}.pdf';
     final path = await savePdfBytes(bytes, fileName);
     return (path: path, bytes: bytes);
+  }
+
+  pw.Widget _buildChart(ReportSection section) {
+    // Simple vertical bar chart simulation using containers
+    final data = section.chartData!;
+    if (data.isEmpty) return pw.SizedBox();
+
+    // Find max value for scaling
+    double maxValue = 0;
+    data.forEach((key, value) {
+      if (value is num && value > maxValue) {
+        maxValue = value.toDouble();
+      }
+    });
+
+    if (maxValue == 0) maxValue = 1;
+
+    return pw.Container(
+      height: 200,
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey300),
+      ),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: pw.CrossAxisAlignment.end,
+        children: data.entries.map((entry) {
+          final value = (entry.value as num).toDouble();
+          final heightFactor = value / maxValue;
+
+          return pw.Column(
+            mainAxisAlignment: pw.MainAxisAlignment.end,
+            children: [
+              pw.Text(
+                value.toString(),
+                style: const pw.TextStyle(fontSize: 10),
+              ),
+              pw.SizedBox(height: 5),
+              pw.Container(
+                width: 40,
+                height: 150 * heightFactor,
+                color: PdfColors.blueAccent,
+              ),
+              pw.SizedBox(height: 5),
+              pw.Container(
+                width: 60,
+                child: pw.Text(
+                  entry.key,
+                  style: const pw.TextStyle(fontSize: 10),
+                  textAlign: pw.TextAlign.center,
+                  maxLines: 2,
+                  overflow: pw.TextOverflow.clip,
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
   }
 }

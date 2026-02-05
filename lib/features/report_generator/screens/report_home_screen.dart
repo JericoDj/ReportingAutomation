@@ -230,22 +230,57 @@ class ReportHomeScreen extends StatelessWidget {
           return;
         }
         title = "Analysis Data";
+
+        String formatString(String? input) {
+          if (input == null || input.isEmpty) return 'Unknown';
+          return input
+              .replaceAll('_', ' ')
+              .split(' ')
+              .map(
+                (word) => word.isNotEmpty
+                    ? '${word[0].toUpperCase()}${word.substring(1)}'
+                    : '',
+              )
+              .join(' ');
+        }
+
         content = SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Type: ${provider.analysis!.type}",
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              _buildDialogRow("Topic", formatString(provider.analysis!.type)),
+              const SizedBox(height: 12),
+              _buildDialogRow(
+                "AI Confidence",
+                "${((provider.analysis?.confidence ?? 0) * 100).toStringAsFixed(1)}%",
               ),
-              const SizedBox(height: 8),
-              Text("Keywords: ${provider.analysis!.keywords.join(', ')}"),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               const Text(
-                "Raw Info:",
-                style: TextStyle(fontWeight: FontWeight.bold),
+                "Keywords:",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
               ),
-              Text(provider.analysis!.toJson().toString()),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: provider.analysis!.keywords
+                    .map(
+                      (k) => Chip(
+                        label: Text(k),
+                        backgroundColor: Colors.blue.shade50,
+                        labelStyle: TextStyle(color: Colors.blue.shade800),
+                      ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 16),
+              _buildDialogRow(
+                "Document Type",
+                formatString(provider.analysis!.recommendedReportType),
+              ),
             ],
           ),
         );
@@ -595,6 +630,27 @@ class ReportHomeScreen extends StatelessWidget {
           Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
+    );
+  }
+
+  Widget _buildDialogRow(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+      ],
     );
   }
 }
