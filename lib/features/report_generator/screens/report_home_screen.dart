@@ -11,6 +11,7 @@ import 'package:printing/printing.dart'; // For previewing standard PDFs easily
 import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 import 'package:reportautomation/features/report_generator/widgets/web_pdf_view/web_pdf_view.dart';
 
 class ReportHomeScreen extends StatelessWidget {
@@ -30,6 +31,10 @@ class ReportHomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/'),
+        ),
         title: const Text('Real Estate AI Reporter'),
         centerTitle: true,
         elevation: 0,

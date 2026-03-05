@@ -1,0 +1,10 @@
+flutter_icons:
+  android: "ic_launcher"
+  ios: true
+  macos:
+    generate: true
+    image_path: "assets/App_Logo.png"
+  windows:
+    generate: true
+    image_path: "assets/App_Logo.png"
+  image_path: "assets/App_Logo.png"
