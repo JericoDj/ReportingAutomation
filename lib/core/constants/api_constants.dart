@@ -9,5 +9,10 @@ class ApiConstants {
   // OpenAI
   static String get openAiApiKey => dotenv.env['OPENAI_API_KEY'] ?? '';
   static const String openAiUrl = 'https://api.openai.com/v1/chat/completions';
-  static const String openAiModel = 'gpt-4-turbo-preview';
+  static const String openAiModel =
+      'gpt-4o-mini'; // Reverted from gpt-4o-mini due to 500 errors
+
+  // Gemini
+  static String get geminiApiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
+  static const String geminiModel = 'gemini-3.1-flash-lite-preview';
 }

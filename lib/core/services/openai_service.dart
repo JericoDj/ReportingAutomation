@@ -13,14 +13,17 @@ class OpenAIService {
 
   /// Step 2: Analyze Conversation Type
   Future<ConversationAnalysisModel> analyzeConversation(
-      String transcript,
-      ) async {
+    String transcript,
+  ) async {
     debugPrint('Analyzing transcript of length: ${transcript.length}');
 
-    final truncatedTranscript =
-    transcript.substring(0, transcript.length > 4000 ? 4000 : transcript.length);
+    final truncatedTranscript = transcript.substring(
+      0,
+      transcript.length > 4000 ? 4000 : transcript.length,
+    );
 
-    final prompt = '''
+    final prompt =
+        '''
 Analyze the following conversation transcript and make a strict classification.
 
 TASKS:
@@ -61,7 +64,6 @@ Transcript:
     final result = await _postRequest(prompt);
     return ConversationAnalysisModel.fromJson(jsonDecode(result));
   }
-
 
   /// Step 3: Generate Structured Report
   Future<ReportJsonModel> generateReport(
@@ -181,6 +183,55 @@ Transcript:
         .replaceAll('```', '')
         .trim();
     return ReportJsonModel.fromJson(jsonDecode(cleanJson));
+  }
+
+  Future<String> generateInterviewAnswer(String transcribedText) async {
+    final prompt =
+        '''
+    You are an AI assistant helping a candidate during a live interview.
+    I will provide you with the transcribed audio of what the interviewer just asked.
+    Please provide the BEST, most professional, and concise answer to the question.
+    Ensure the answer is directly addressing the question, helpful, and highlights the candidate's potential if applicable.
+    
+    If the text doesn't seem like a question, provide a relevant professional response or advice on how to handle the statement.
+    Do NOT output JSON, just return the plain text answer.
+
+    Transcribed Text:
+    "$transcribedText"
+    ''';
+
+    try {
+      final response = await http.post(
+        Uri.parse(_baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'model': _model,
+          'messages': [
+            {
+              'role': 'system',
+              'content':
+                  'You are a professional Interview Coach parsing real-time interview transcripts to suggest the best possible answers.',
+            },
+            {'role': 'user', 'content': prompt},
+          ],
+          'temperature': 0.7, // A bit of creativity for the answer
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['choices'][0]['message']['content'];
+      } else {
+        throw Exception(
+          'OpenAI Error: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      throw Exception('OpenAI Exception: $e');
+    }
   }
 
   Future<String> _postRequest(String userPrompt) async {

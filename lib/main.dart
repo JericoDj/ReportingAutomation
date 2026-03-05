@@ -5,6 +5,18 @@ import 'package:reportautomation/app.dart';
 import 'package:reportautomation/features/report_generator/providers/report_provider.dart';
 import 'firebase_options.dart'; // We will need to generate this or mock it for now.
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:reportautomation/features/interview_answer/screens/interview_overlay.dart';
+
+@pragma("vm:entry-point")
+void overlayMain() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(
+    const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: InterviewOverlay(),
+    ),
+  );
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
