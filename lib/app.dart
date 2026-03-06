@@ -10,6 +10,7 @@ class ReportAutomationApp extends StatelessWidget {
       title: 'Real Estate Report Automation',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        scaffoldBackgroundColor: Colors.transparent,
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1A73E8), // Professional Blue
           brightness: Brightness.light,

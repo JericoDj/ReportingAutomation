@@ -13,6 +13,7 @@ void overlayMain() {
   runApp(
     const MaterialApp(
       debugShowCheckedModeBanner: false,
+      color: Colors.transparent,
       home: InterviewOverlay(),
     ),
   );
