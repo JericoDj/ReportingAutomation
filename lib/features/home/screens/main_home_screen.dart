@@ -12,7 +12,7 @@ class MainHomeScreen extends StatelessWidget {
         title: const Text('AI Assistant Hub'),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         foregroundColor: Colors.black87,
       ),
       body: Center(

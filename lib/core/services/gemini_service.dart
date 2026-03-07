@@ -21,6 +21,7 @@ class GeminiService {
     "$transcribedText"
     ''';
 
+
     final url =
         'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey';
 

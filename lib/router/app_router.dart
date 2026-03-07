@@ -5,7 +5,8 @@ import 'package:reportautomation/features/report_generator/screens/report_home_s
 import 'package:reportautomation/features/interview_answer/screens/interview_answer_screen.dart';
 
 class AppRouter {
-  static final router = GoRouter(
+  static final
+  router = GoRouter(
     initialLocation: '/',
     routes: [
       GoRoute(path: '/', builder: (context, state) => const MainHomeScreen()),

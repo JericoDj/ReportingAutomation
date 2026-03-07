@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
 class InterviewOverlay extends StatefulWidget {
-  const InterviewOverlay({super.key});
+  const
+  InterviewOverlay({super.key});
 
   @override
   State<InterviewOverlay> createState() => _InterviewOverlayState();
